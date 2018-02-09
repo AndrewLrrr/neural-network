@@ -23,15 +23,52 @@ class NeuralNetwork:
         self.w_h_o = None  # весовые коэффициенты между скрытым и выходным слоем
         self.__init_weights()
 
-    def train(self):
+    def train(self, input_list, target_list):
         """Тренировка нейронной сети - уточнение весовых коэффициентов
+        :param list|tuple input_list: входные данные
+        :param list|tuple target_list: целевые значения
         """
-        pass
+        # Преобразуем входные данные в двумерный массив [1, 2, 3, 4] -> array([[1], [2], [3], [4]])
+        inputs = np.array(input_list, ndmin=2).T
+        targets = np.array(target_list, ndmin=2).T
+
+        # Расчитаем входящие сигналы для скрытого слоя
+        h_inputs = np.dot(self.w_i_h, inputs)
+
+        # Расчитаем исходящие сигналы для скрытого слоя
+        h_outputs = self.__activation_function(h_inputs)
+
+        # Расчитаем входящие сигналы для выходного слоя
+        o_inputs = np.dot(self.w_h_o, h_outputs)
+
+        # Расчитаем исходящие сигналы для выходного слоя
+        o_outputs = self.__activation_function(o_inputs)
+
+        # Выходная ошибка сети = целевое значение - фактическое значение
+        o_errors = targets - o_outputs
+
+        # Ошибки скрытого слоя - это ошибки выходного слоя сети,
+        # распределенные пропорционально весовым коэфициентам связей
+        # и рекомбинированные на скрытых узлах
+        h_errors = np.dot(self.w_h_o, o_errors)
+
+        # Обновим весовые по следующей формуле:
+        # alpha * e * sigmoid(x) * (1 - sigmoid(x)) * o, где
+        # alpha - коэфициент обучения,
+        # e - выходная ошибка,
+        # sigmoid(x) * (1 - sigmoid(x)) - производная от функции активации (сигмойды в нашем случае),
+        # o - выходной сигнал предыдущего слоя.
+
+        # Обновим весовые коэфициенты между скрытым и выходным слоем сети
+        self.w_h_o += self.rate * np.dot((o_errors * o_outputs * (1 - o_outputs)), h_outputs.T)
+
+        # Обновим весовые коэфициенты между входным и скрытым слоем сети
+        self.w_i_h += self.rate * np.dot((h_errors * h_outputs * (1 - h_outputs)), inputs.T)
 
     def query(self, input_list):
         """Опрос нейронной сети - получение значений сигналов выходных узлов
         :param list|tuple input_list: входные данные
-        :return: выходные данные
+        :return numpy.array: выходные данные
         """
         # Преобразуем входные данные в двумерный массив [1, 2, 3, 4] -> array([[1], [2], [3], [4]])
         inputs = np.array(input_list, ndmin=2).T
@@ -61,12 +98,7 @@ class NeuralNetwork:
     @staticmethod
     def __activation_function(s):
         """Функция активации нейронной сети
-        :param np.array s: двумерный массив входящих сигналов сети
-        :return: двумерный массив сглаженных комбинированных сигналов
+        :param numpy.array s: двумерный массив входящих сигналов сети
+        :return numpy.array: двумерный массив сглаженных комбинированных сигналов
         """
         return 1.0 / (1.0 + np.exp(-s))  # в качастве функции активации будет выступать сигмойда
-
-
-if __name__ == '__main__':
-    nn = NeuralNetwork()
-    print(nn.query([1.0, 2, -1.5]))
