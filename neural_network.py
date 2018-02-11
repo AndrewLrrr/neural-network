@@ -1,27 +1,39 @@
-import numpy as np
-
 """
-Данная нейросеть представляет собой многослойный перцептрон и состоит из трёх слоёв (входной (сенсорный), скрытый и 
-выходной). Нейроны каждого слоя соединены по принципу "каждый с каждым". 
+Данная нейросеть представляет собой многослойный перцептрон и состоит из трёх слоёв (входной (сенсорный), скрытый и
+выходной). Нейроны каждого слоя соединены по принципу "каждый с каждым".
 Пример схемы нейронной сети: http://robocraft.ru/files/neuronet/neuronet.png
 """
 
+import os
+import pickle
+import errno
+
+import numpy as np
+
+
+STORAGE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '.storage'))
+
 
 class NeuralNetwork:
-    def __init__(self, input_nodes=3, hidden_nodes=3, output_nodes=3, rate=0.3):
+    def __init__(self, input_nodes=3, hidden_nodes=3, output_nodes=3, rate=0.3, load_from=None):
         """
         :param int input_nodes: количество узлов во входном слое
         :param int hidden_nodes: количество узлов в скрытом слое
         :param int output_nodes: количество узлов в выходном слое
         :param float rate: коэфициент обучения
+        :param str load_from: загрузить данные из предварительно обученной модели
         """
-        self.input_nodes = input_nodes
-        self.hidden_nodes = hidden_nodes
-        self.output_nodes = output_nodes
-        self.rate = rate
-        self.w_i_h = None  # весовые коэффициенты между входным и скрытым слоем
-        self.w_h_o = None  # весовые коэффициенты между скрытым и выходным слоем
-        self.__init_weights()
+        if load_from is not None:
+            if not self.load(load_from):
+                raise ValueError('Model with name `{}` not found'.format(load_from))
+        else:
+            self.input_nodes = input_nodes
+            self.hidden_nodes = hidden_nodes
+            self.output_nodes = output_nodes
+            self.rate = rate
+            self.w_i_h = None  # весовые коэффициенты между входным и скрытым слоем
+            self.w_h_o = None  # весовые коэффициенты между скрытым и выходным слоем
+            self.__init_weights()
 
     def train(self, input_list, target_list):
         """Тренировка нейронной сети - уточнение весовых коэффициентов
@@ -86,6 +98,45 @@ class NeuralNetwork:
         o_outputs = self.__activation_function(o_inputs)
 
         return o_outputs
+
+    def save(self, key):
+        """Сохраняет обученную модель
+        :param str key: имя модели
+        """
+        try:
+            os.makedirs(STORAGE_PATH)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+        file_path = os.path.join(STORAGE_PATH, key)
+        value = {
+            'input_nodes': self.input_nodes,
+            'hidden_nodes': self.hidden_nodes,
+            'output_nodes': self.output_nodes,
+            'rate': self.rate,
+            'w_i_h': self.w_i_h,
+            'w_h_o': self.w_h_o,
+        }
+        with open(file_path, mode='wb') as fn:
+            pickle.dump(value, fn, protocol=2)
+
+    def load(self, key):
+        """Загружает обученную модель
+        :param str key: имя модели
+        """
+        file_path = os.path.join(STORAGE_PATH, key)
+        if os.path.isfile(file_path):
+            with open(file_path, mode='rb') as fn:
+                value = pickle.load(fn)
+            self.input_nodes = value['input_nodes']
+            self.hidden_nodes = value['hidden_nodes']
+            self.output_nodes = value['output_nodes']
+            self.rate = value['rate']
+            self.w_i_h = value['w_i_h']
+            self.w_h_o = value['w_h_o']
+            return True
+        else:
+            return False
 
     def __init_weights(self):
         """Инициализация случайных весов используя "улучшенный" вариант инициализации весовых коэфициентов. 
