@@ -99,6 +99,40 @@ class NeuralNetwork:
 
         return o_outputs
 
+    def back_query(self, output_list):
+        """Осуществляет обратный запрос к сети
+        :param iterable output_list: обратные исходящие сигналы сети
+        :return numpy.array: выходные данные
+        """
+        # Преобразуем входные данные в двумерный массив [1, 2, 3, 4] -> array([[1], [2], [3], [4]])
+        o_outputs = np.array(output_list, ndmin=2).T
+
+        # Преобразуем выходящие сигналы во входящие сигналы для выходного слоя
+        o_inputs = self.__back_activation_function(o_outputs)
+
+        # Расчитаем исходящие сигналы для скрытого слоя
+        h_outputs = np.dot(self.w_h_o.T, o_inputs)
+
+        # Нормализуем сигналы от 0.01 до 0.99, т.к. сигмойда не может давать знаения за пределами этих чисел
+        h_outputs -= np.min(h_outputs)
+        h_outputs /= np.max(h_outputs)
+        h_outputs *= 0.98
+        h_outputs += 0.01
+
+        # Расчитаем входящие сигналы для скрытого слоя
+        hidden_inputs = self.__back_activation_function(h_outputs)
+
+        # Расчитаем исходящие сигналы для входного слоя
+        inputs = np.dot(self.w_i_h.T, hidden_inputs)
+
+        # Нормализуем сигналы от 0.01 до 0.99, т.к. сигмойда не может давать знаения за пределами этих чисел
+        inputs -= np.min(inputs)
+        inputs /= np.max(inputs)
+        inputs *= 0.98
+        inputs += 0.01
+
+        return inputs
+
     def save(self, key):
         """Сохраняет обученную модель
         :param str key: имя модели
@@ -147,9 +181,18 @@ class NeuralNetwork:
         self.w_h_o = np.random.normal(0.0, pow(self.output_nodes, -0.5), (self.output_nodes, self.hidden_nodes))
 
     @staticmethod
-    def __activation_function(s):
+    def __activation_function(x):
         """Функция активации нейронной сети
-        :param iterable s: двумерный массив входящих сигналов сети
-        :return numpy.array: двумерный массив сглаженных комбинированных сигналов
+        :param iterable x: матрица входящих сигналов сети
+        :return numpy.array: матрица сглаженных комбинированных сигналов
         """
-        return 1.0 / (1.0 + np.exp(-s))  # в качастве функции активации будет выступать сигмойда
+        return 1.0 / (1.0 + np.exp(-x))  # в качастве функции активации будет выступать сигмойда
+
+    @staticmethod
+    def __back_activation_function(y):
+        """Функция обратной активации нейронной сети
+           В нашем случае, для сигмойды обратной функцией является логит - y = 1/(1 + e**-x) <=> x = ln(y/(1-y)) 
+        :param iterable y: матрица обратных исходящих сигналов сети
+        :return numpy.array: матрица обратно сглаженных комбинированных сигналов
+        """
+        return np.log(y / (1.0 - y))
