@@ -50,7 +50,7 @@ class NeuralNetwork:
         # Ошибки скрытого слоя - это ошибки выходного слоя сети,
         # распределенные пропорционально весовым коэфициентам связей
         # и рекомбинированные на скрытых узлах
-        h_errors = np.dot(self.w_h_o, o_errors)
+        h_errors = np.dot(self.w_h_o.T, o_errors)
 
         # Обновим весовые по следующей формуле:
         # alpha * e * sigmoid(x) * (1 - sigmoid(x)) * o, где
@@ -92,8 +92,8 @@ class NeuralNetwork:
            Весовые коэфициенты выбираются из нормального распределения центром в нуле и со стандартным отклонением, 
            величина которого обратно пропорциональна квадратному корню из количества входящих связей на узел.
         """
-        self.w_i_h = np.random.normal(0.0, np.sqrt(self.hidden_nodes), (self.hidden_nodes, self.input_nodes))
-        self.w_h_o = np.random.normal(0.0, np.sqrt(self.output_nodes), (self.output_nodes, self.hidden_nodes))
+        self.w_i_h = np.random.normal(0.0, pow(self.hidden_nodes, -0.5), (self.hidden_nodes, self.input_nodes))
+        self.w_h_o = np.random.normal(0.0, pow(self.output_nodes, -0.5), (self.output_nodes, self.hidden_nodes))
 
     @staticmethod
     def __activation_function(s):
